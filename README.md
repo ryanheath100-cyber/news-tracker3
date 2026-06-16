@@ -1,24 +1,49 @@
-# Daily News Tracker — Tested & Ready
+# Daily News Tracker — now with REAL news (The Guardian)
 
-This folder is a complete, **validated** Vite + React project. The component has been
-server-rendered and unit-tested (rendering, all four category branches, date navigation
-across month/year boundaries, future-clamping, history sorting, and the first-visit empty
-state). The bugs that were in the earlier draft have been fixed (see "What was fixed" below).
+This app pulls live headlines from **The Guardian Open Platform API** — a genuinely free,
+browser-friendly news API (no credit card, 500 requests/day, works on a live site).
 
-## File structure (don't rearrange — paths are wired to this)
+## File structure
 
 ```
 news-tracker/
-├── index.html          # entry, loads /src/main.jsx
+├── index.html
 ├── package.json
 ├── vite.config.js
 ├── .gitignore
+├── README.md
 └── src/
-    ├── main.jsx        # React entry (imports ./App.jsx)
-    └── App.jsx         # the app
+    ├── main.jsx        # React entry
+    ├── App.jsx         # the app UI
+    └── guardian.js     # live news fetcher (The Guardian API)
 ```
 
-## Run it locally (3 commands)
+## Get your free Guardian API key (2 minutes, one time)
+
+1. Go to https://open-platform.theguardian.com/access
+2. Fill in the short form (pick "Register developer key"). It's free, no card.
+3. The key arrives by email instantly.
+
+The app ships with the Guardian's shared `test` key as a fallback so it works out of the box,
+but that key is rate-limited and shared — **use your own key for reliability.**
+
+### Where to put the key
+
+The key is read from an environment variable `VITE_GUARDIAN_KEY`. Two ways to set it:
+
+**Local development** — create a file named `.env` in the project root:
+```
+VITE_GUARDIAN_KEY=your-key-here
+```
+(`.env` is already git-ignored, so your key won't be committed.)
+
+**On Netlify (for the live site)** — Site settings → Environment variables → Add a variable:
+- Key: `VITE_GUARDIAN_KEY`
+- Value: your-key-here
+
+Then trigger a redeploy (Deploys → Trigger deploy → Deploy site). Vite bakes the key in at build time.
+
+## Run locally
 
 ```bash
 cd news-tracker
@@ -26,50 +51,32 @@ npm install
 npm run dev
 ```
 
-Open the URL it prints (default http://localhost:5173). You should see the tracker with
-four sections, working day navigation, category filter, and a History row that fills in
-as you visit days.
+You should see real Guardian headlines across Global, Markets, Technology, Economics, and Sport.
+If live news can't be reached (no key, network issue, API down), the app shows a small amber
+banner and falls back to demo content so it never breaks.
 
-## Build + deploy to Netlify
+## How the categories map to The Guardian
 
-```bash
-npm run build      # outputs to dist/  — verify it completes with no errors
-```
+| Section in app | Guardian source |
+|----------------|-----------------|
+| Global         | `world` section |
+| Markets        | `business` section |
+| Technology     | `technology` section |
+| Economics      | `business/economics` tag |
+| Sport          | combined: Premier League, **Chelsea** (`football/chelsea`), transfer window, rugby union, cricket |
 
-Then either:
-- **Drag-and-drop:** drag the `dist/` folder onto https://app.netlify.com/drop — instant live URL, or
-- **Git-connected:** push this folder to a GitHub repo, "Import an existing project" in Netlify,
-  build command `npm run build`, publish directory `dist`.
+Each sport story is tagged with its area (Chelsea FC, Rugby, Cricket, etc.) so you can see at a
+glance what it's about. "View full story" links go to the real Guardian article.
 
-## What was fixed from the first draft
+## Deploy the update
 
-1. **Invalid border colors.** The old code did `config.color.replace('text-','#').replace('-600','')`
-   which produced `"#blue"` — not a real color, so the colored left-border on every card silently
-   didn't render. Now each category carries a real hex (e.g. `#2563eb`) and the borders show.
-2. **Phantom CSS import.** `main.jsx` previously did `import './index.css'` but no such file
-   existed — Vite would fail the build with "failed to resolve import". Removed.
-3. **Dual Tailwind setup.** `package.json` listed `tailwindcss`/`postcss`/`autoprefixer` as if
-   building Tailwind locally, while the HTML loaded the Tailwind CDN. That's contradictory and the
-   local one was never configured. Settled on the CDN (simplest for this app); dropped the unused deps.
-4. **Unused import** (`DollarSign`) removed — would have been a lint warning.
-5. **localStorage hardened** with try/catch so a privacy-mode browser can't crash the initial render.
-6. **History panel moved into normal page flow** (was a fixed-position floating box that overlaps
-   content on small screens).
+Since you're connected through GitHub: replace `src/App.jsx`, **add** the new `src/guardian.js`,
+commit, and Netlify auto-rebuilds. Don't forget to add the `VITE_GUARDIAN_KEY` environment
+variable in Netlify (above) for reliable live news.
 
-## Note on the one error you might hit
+## Want to go further later
 
-If you ever see `does not provide an export named 'BarChart3'` (or similar), it means an icon name
-doesn't exist in your installed `lucide-react` version. The six icons this app uses — `ChevronLeft`,
-`ChevronRight`, `TrendingUp`, `Globe`, `BarChart3`, `Zap` — are all valid in `lucide-react@0.263.1`
-(pinned in package.json). If you bump the version and an icon name changed, check
-https://lucide.dev/icons and update the import.
-
-## Making the news real (optional, later)
-
-Right now `generateMockNews()` in `App.jsx` returns demo content. To use live data, replace that
-function's body with a `fetch` to a free source:
-- NewsAPI.org (free tier, needs a key)
-- Any RSS feed via rss2json.com (no key)
-
-The rest of the app — storage, history, navigation — works unchanged regardless of where the
-news comes from.
+- More sources (BBC, Reuters, etc.) would need either their APIs or a small Netlify serverless
+  function to combine feeds — happy to build that when you want it.
+- Live sports scores/fixtures (as opposed to news articles) need a dedicated sports API; most
+  good ones are paid, so that's a separate decision.
